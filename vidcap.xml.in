@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<compiz>
+    <plugin name="vidcap" useBcop="true">
+	<_short>Vidcap</_short>
+	<_long>Screen Recorder</_long>
+	<category>Utility</category>
+		<display>
+			<option name="toggle_record" type="key">
+				<_short>Start / Stop</_short>
+				<_long>Start and stop recording</_long>
+			</option>
+		</display>
+    </plugin>
+</compiz>
