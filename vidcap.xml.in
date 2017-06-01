@@ -8,6 +8,7 @@
 			<option name="toggle_record" type="key">
 				<_short>Start / Stop</_short>
 				<_long>Start and stop recording</_long>
+				<default>&lt;Super&gt;v</default>
 			</option>
 			<option name="directory" type="string">
 				<_short>Directory</_short>
@@ -17,7 +18,7 @@
 			</option>
 			<option name="command" type="string">
 				<_short>Command</_short>
-				<_long>Command to be used for encoding video. %f will be replaced with the file name.</_long>
+				<_long>Command to be used for encoding video. Use a dash (-) for the input file and %f for the output file.</_long>
 				<default>avconv -i - %f</default>
 			</option>
 		</display>
