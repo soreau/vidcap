@@ -546,11 +546,12 @@ thread_func (void *data)
 	if (!found)
 		command = strdup ("cat /tmp/vidcap.out | avconv -i - /tmp/vidcap.mp4");
 
-	printf("command: %s\n", command);
+	if (!system (command))
+		printf("%s created\n", fullpath);
+	else
+		printf("command failed: %s\n", command);
 
-	system (command);
 	system ("rm -rf /tmp/vidcap.out");
-	printf("%s created\n", fullpath);
 
 	free (tmpcmd);
 	free (command);
