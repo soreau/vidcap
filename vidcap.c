@@ -37,7 +37,8 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <sys/mman.h>
-#include <assert.h>
+#include <dirent.h>
+#include <sys/stat.h>
 
 #include <compiz-core.h>
 
@@ -58,6 +59,7 @@ typedef struct _VidcapDisplay
     uint32_t *frame;
 
     pthread_t thread;
+    Bool thread_running;
 } VidcapDisplay;
 
 typedef struct _VidcapScreen
@@ -327,8 +329,6 @@ vidcapPaintScreen (CompScreen   *screen,
 
 		vd->total += write(vd->fd, outbuf, (p - outbuf) * 4);
 
-		printf("Recorded %d bytes\n", vd->total);
-
 		free (pixel_data);
 	}
 }
@@ -338,20 +338,9 @@ rgb_to_yuv(uint32_t format, uint32_t p, int *u, int *v)
 {
 	int r, g, b, y;
 
-	switch (format) {
-	case WCAP_FORMAT_XRGB8888:
-		r = (p >> 16) & 0xff;
-		g = (p >> 8) & 0xff;
-		b = (p >> 0) & 0xff;
-		break;
-	case WCAP_FORMAT_XBGR8888:
-		r = (p >> 0) & 0xff;
-		g = (p >> 8) & 0xff;
-		b = (p >> 16) & 0xff;
-		break;
-	default:
-		assert(0);
-	}
+	r = (p >> 0) & 0xff;
+	g = (p >> 8) & 0xff;
+	b = (p >> 16) & 0xff;
 
 	y = (19595 * r + 38469 * g + 7472 * b) >> 16;
 	if (y > 255)
@@ -472,7 +461,15 @@ write_file (int fd)
 static void *
 thread_func (void *data)
 {
+	CompDisplay *d = (CompDisplay *) data;
 	int fd;
+	DIR *dir;
+	struct dirent *file;
+	struct stat st;
+	char *directory;
+	char *command, *tmpcmd, *fullpath;
+	char filename[256];
+	int i, found;
 
 	fd = open("/tmp/vidcap.out",
 					O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
@@ -481,10 +478,69 @@ thread_func (void *data)
 
 	close (fd);
 
-	system ("rm -rf /tmp/vidcap.mp4");
-	system ("cat /tmp/vidcap.out | avconv -i - /tmp/vidcap.mp4");
+	if (stat (vidcapGetDirectory (d), &st) == 0 && S_ISDIR(st.st_mode))
+	{
+		directory = strdup (vidcapGetDirectory (d));
+	}
+	else
+	{
+		printf("Could not stat %s or not a directory, defaulting to /tmp\n", vidcapGetDirectory (d));
+		directory = strdup ("/tmp");
+	}
+
+	if ((dir = opendir(directory)) == NULL)
+		strcpy(fullpath, "/tmp/vidcap.mp4");
+	else
+	{
+		i = 0;
+		sprintf(filename, "vidcap-%02d.mp4", i);
+		while ((file = readdir(dir)) != 0)
+		{
+			if (!strcmp(file->d_name, filename))
+			{
+				i++;
+				sprintf(filename, "vidcap-%02d.mp4", i);
+			}
+		}
+		asprintf (&fullpath, "%s/%s", directory, filename);
+	}
+
+	tmpcmd = strdup (vidcapGetCommand (d));
+	found = 0;
+
+	for (i = 0; i < strlen (tmpcmd); i++)
+	{
+		if (!strcmp(&tmpcmd[i], "%f\0"))
+		{
+			found = 1;
+			tmpcmd[i] = '\0';
+			asprintf(&command, "%s%s%s", "cat /tmp/vidcap.out | ", tmpcmd, fullpath);
+			printf("command: using %s\n", command);
+		}
+		else if (!strcmp(&tmpcmd[i], "%f "))
+		{
+			found = 1;
+			tmpcmd[i] = '\0';
+			asprintf(&command, "%s%s%s%s", "cat /tmp/vidcap.out | ", tmpcmd, fullpath, &tmpcmd[i+3]);
+			printf("command: using %s\n", command);
+		}
+	}
+
+	if (!found)
+		command = strdup ("cat /tmp/vidcap.out | avconv -i - /tmp/vidcap.mp4");
+
+
+	system (command);
 	system ("rm -rf /tmp/vidcap.out");
 	printf("command complete\n");
+
+	free (tmpcmd);
+	free (command);
+	free (directory);
+
+	VIDCAP_DISPLAY (d);
+
+	vd->thread_running = FALSE;
 
 	return NULL;
 }
@@ -501,7 +557,7 @@ vidcapToggle (CompDisplay     *d,
 
 	vd->recording = !vd->recording;
 
-	if (vd->recording)
+	if (vd->recording && !vd->thread_running)
 	{
 		vd->frame = malloc (d->screens->width * d->screens->height * 4);
 		if (!vd->frame)
@@ -527,6 +583,7 @@ vidcapToggle (CompDisplay     *d,
 	{
 		free (vd->frame);
 		close (vd->fd);
+		vd->thread_running = TRUE;
 		pthread_create(&vd->thread, NULL, thread_func, d);
 	}
 
@@ -554,6 +611,7 @@ vidcapInitDisplay (CompPlugin *p,
 	}
 
 	vd->recording = FALSE;
+	vd->thread_running = FALSE;
 
     vidcapSetToggleRecordInitiate (d, vidcapToggle);
 

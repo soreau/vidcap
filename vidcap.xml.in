@@ -9,6 +9,17 @@
 				<_short>Start / Stop</_short>
 				<_long>Start and stop recording</_long>
 			</option>
+			<option name="directory" type="string">
+				<_short>Directory</_short>
+				<_long>Directory to store videos</_long>
+				<default>/tmp</default>
+				<hints>directory;</hints>
+			</option>
+			<option name="command" type="string">
+				<_short>Command</_short>
+				<_long>Command to be used for encoding video. %f will be replaced with the file name.</_long>
+				<default>avconv -i - %f</default>
+			</option>
 		</display>
     </plugin>
 </compiz>
