@@ -550,7 +550,7 @@ thread_func (void *data)
 		command = strdup ("cat /tmp/vidcap.out | avconv -i - /tmp/vidcap.mp4");
 
 	if (!system (command))
-		compLogMessage ("vidcap", CompLogLevelInfo, "Created %s\n", fullpath);
+		compLogMessage ("vidcap", CompLogLevelInfo, "Created: %s\n", fullpath);
 	else
 		compLogMessage ("vidcap", CompLogLevelWarn, "Command failed: %s\n", command);
 
