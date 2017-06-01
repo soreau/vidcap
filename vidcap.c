@@ -460,7 +460,8 @@ write_file (int fd)
 
 	fclose(f);
 
-	printf("wcap file: size %dx%d, %d frames\n",
+	compLogMessage ("vidcap", CompLogLevelInfo,
+		"wcap file: size %dx%d, %d frames\n",
 		decoder->width, decoder->height, i);
 
 	wcap_decoder_destroy(decoder);
@@ -491,7 +492,9 @@ thread_func (void *data)
 	}
 	else
 	{
-		printf("Could not stat %s or not a directory, defaulting to /tmp\n", vidcapGetDirectory (d));
+		compLogMessage ("vidcap", CompLogLevelWarn,
+			"Could not stat %s or not a directory, defaulting to /tmp\n",
+			vidcapGetDirectory (d));
 		directory = strdup ("/tmp");
 	}
 
@@ -547,9 +550,9 @@ thread_func (void *data)
 		command = strdup ("cat /tmp/vidcap.out | avconv -i - /tmp/vidcap.mp4");
 
 	if (!system (command))
-		printf("%s created\n", fullpath);
+		compLogMessage ("vidcap", CompLogLevelInfo, "%s created\n", fullpath);
 	else
-		printf("command failed: %s\n", command);
+		compLogMessage ("vidcap", CompLogLevelWarn, "command failed: %s\n", command);
 
 	system ("rm -rf /tmp/vidcap.out");
 
