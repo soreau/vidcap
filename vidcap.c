@@ -510,19 +510,21 @@ thread_func (void *data)
 
 	for (i = 0; i < strlen (tmpcmd); i++)
 	{
-		if (!strcmp(&tmpcmd[i], "%f\0"))
+		if (!strcmp(&tmpcmd[i], "%f"))
 		{
 			found = 1;
 			tmpcmd[i] = '\0';
 			asprintf(&command, "%s%s%s", "cat /tmp/vidcap.out | ", tmpcmd, fullpath);
 			printf("command: using %s\n", command);
+			break;
 		}
-		else if (!strcmp(&tmpcmd[i], "%f "))
+		else if (!strncmp(&tmpcmd[i], "%f ", 3))
 		{
 			found = 1;
 			tmpcmd[i] = '\0';
 			asprintf(&command, "%s%s%s%s", "cat /tmp/vidcap.out | ", tmpcmd, fullpath, &tmpcmd[i+3]);
 			printf("command: using %s\n", command);
+			break;
 		}
 	}
 
