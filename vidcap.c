@@ -514,7 +514,10 @@ thread_func (void *data)
 			sprintf(filename, "vidcap-%02d.mp4", i);
 		}
 		else
+		{
+			closedir (dir);
 			break;
+		}
 		closedir (dir);
 	}
 	asprintf (&fullpath, "%s/%s", directory, filename);
@@ -529,7 +532,6 @@ thread_func (void *data)
 			found = 1;
 			tmpcmd[i] = '\0';
 			asprintf(&command, "%s%s%s", "cat /tmp/vidcap.out | ", tmpcmd, fullpath);
-			printf("command: using %s\n", command);
 			break;
 		}
 		else if (!strncmp(&tmpcmd[i], "%f ", 3))
@@ -537,7 +539,6 @@ thread_func (void *data)
 			found = 1;
 			tmpcmd[i] = '\0';
 			asprintf(&command, "%s%s%s%s", "cat /tmp/vidcap.out | ", tmpcmd, fullpath, &tmpcmd[i+3]);
-			printf("command: using %s\n", command);
 			break;
 		}
 	}
@@ -545,6 +546,7 @@ thread_func (void *data)
 	if (!found)
 		command = strdup ("cat /tmp/vidcap.out | avconv -i - /tmp/vidcap.mp4");
 
+	printf("command: %s\n", command);
 
 	system (command);
 	system ("rm -rf /tmp/vidcap.out");
