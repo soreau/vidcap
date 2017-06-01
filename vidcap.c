@@ -433,6 +433,8 @@ write_file (int fd)
 	char *header;
 	int size;
 
+	compLogMessage ("vidcap", CompLogLevelInfo, "Decoding");
+
 	size = asprintf (&header, "YUV4MPEG2 C420jpeg W%d H%d F%d:%d Ip A0:0\n", decoder->width, decoder->height, num, denom);
 	f = fdopen(fd, "w");
 	fwrite(header, 1, size, f);
@@ -444,11 +446,17 @@ write_file (int fd)
 	frame_time = 1000 * denom / num;
 	while (has_frame) {
 		output_yuv_frame(decoder, f);
+		if ((i % 5) == 0)
+		{
+			printf(" .");
+			fflush (stdout);
+		}
 		i++;
 		msecs += frame_time;
 		while (decoder->msecs < msecs && has_frame)
 			has_frame = wcap_decoder_get_frame(decoder);
 	}
+	printf("\n");
 
 	fclose(f);
 
@@ -466,8 +474,7 @@ thread_func (void *data)
 	DIR *dir;
 	struct dirent *file;
 	struct stat st;
-	char *directory;
-	char *command, *tmpcmd, *fullpath;
+	char *directory, *command, *tmpcmd, *fullpath;
 	char filename[256];
 	int i, found;
 
@@ -488,22 +495,29 @@ thread_func (void *data)
 		directory = strdup ("/tmp");
 	}
 
-	if ((dir = opendir(directory)) == NULL)
-		strcpy(fullpath, "/tmp/vidcap.mp4");
-	else
+	i = 0;
+	sprintf(filename, "vidcap-%02d.mp4", i);
+	while ((dir = opendir(directory)) != NULL)
 	{
-		i = 0;
-		sprintf(filename, "vidcap-%02d.mp4", i);
+		found = 0;
 		while ((file = readdir(dir)) != 0)
 		{
 			if (!strcmp(file->d_name, filename))
 			{
-				i++;
-				sprintf(filename, "vidcap-%02d.mp4", i);
+				found = 1;
+				break;
 			}
 		}
-		asprintf (&fullpath, "%s/%s", directory, filename);
+		if (found)
+		{
+			i++;
+			sprintf(filename, "vidcap-%02d.mp4", i);
+		}
+		else
+			break;
+		closedir (dir);
 	}
+	asprintf (&fullpath, "%s/%s", directory, filename);
 
 	tmpcmd = strdup (vidcapGetCommand (d));
 	found = 0;
@@ -534,10 +548,11 @@ thread_func (void *data)
 
 	system (command);
 	system ("rm -rf /tmp/vidcap.out");
-	printf("command complete\n");
+	printf("%s created\n", fullpath);
 
 	free (tmpcmd);
 	free (command);
+	free (fullpath);
 	free (directory);
 
 	VIDCAP_DISPLAY (d);
@@ -553,7 +568,7 @@ vidcapToggle (CompDisplay     *d,
 				CompActionState state,
 				CompOption      *option,
 				int             nOption)
-{printf("%s called\n", __func__);
+{
 	VIDCAP_DISPLAY (d);
 	struct { uint32_t magic, format, width, height; } header;
 
@@ -561,6 +576,7 @@ vidcapToggle (CompDisplay     *d,
 
 	if (vd->recording && !vd->thread_running)
 	{
+		compLogMessage ("vidcap", CompLogLevelInfo, "Recording started");
 		vd->frame = malloc (d->screens->width * d->screens->height * 4);
 		if (!vd->frame)
 		{
@@ -587,6 +603,7 @@ vidcapToggle (CompDisplay     *d,
 		close (vd->fd);
 		vd->thread_running = TRUE;
 		pthread_create(&vd->thread, NULL, thread_func, d);
+		compLogMessage ("vidcap", CompLogLevelInfo, "Recording stopped");
 	}
 
 	return TRUE;
