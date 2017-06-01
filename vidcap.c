@@ -550,11 +550,12 @@ thread_func (void *data)
 		command = strdup ("cat /tmp/vidcap.out | avconv -i - /tmp/vidcap.mp4");
 
 	if (!system (command))
-		compLogMessage ("vidcap", CompLogLevelInfo, "%s created\n", fullpath);
+		compLogMessage ("vidcap", CompLogLevelInfo, "Created %s\n", fullpath);
 	else
-		compLogMessage ("vidcap", CompLogLevelWarn, "command failed: %s\n", command);
+		compLogMessage ("vidcap", CompLogLevelWarn, "Command failed: %s\n", command);
 
 	system ("rm -rf /tmp/vidcap.out");
+	system ("rm -rf /tmp/vidcap.wcap");
 
 	free (tmpcmd);
 	free (command);
