@@ -557,7 +557,7 @@ thread_func (void *data)
 	struct dirent *file;
 	struct stat st;
 	char *directory, *command, *tmpcmd, *fullpath;
-	char filename[256], ext[3];
+	char filename[256], ext[4];
 	int i, found;
 
 	fd = open("/tmp/vidcap.out",
@@ -581,6 +581,7 @@ thread_func (void *data)
 
 	tmpcmd = strdup (vidcapGetCommand (d));
 	found = 0;
+	ext[3] = '\0';
 
 	for (i = 0; i < strlen (tmpcmd); i++)
 	{
