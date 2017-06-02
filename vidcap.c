@@ -557,7 +557,7 @@ thread_func (void *data)
 	struct dirent *file;
 	struct stat st;
 	char *directory, *command, *tmpcmd, *fullpath;
-	char filename[256];
+	char filename[256], ext[3];
 	int i, found;
 
 	fd = open("/tmp/vidcap.out",
@@ -579,8 +579,24 @@ thread_func (void *data)
 		directory = strdup ("/tmp");
 	}
 
+	tmpcmd = strdup (vidcapGetCommand (d));
+	found = 0;
+
+	for (i = 0; i < strlen (tmpcmd); i++)
+	{
+		if (!strncmp(&tmpcmd[i], "%f.", 3))
+		{
+			found = 1;
+			strncpy (ext, &tmpcmd[i + 3], 3);
+			break;
+		}
+	}
+	free (tmpcmd);
+	if (!found)
+		strncpy (ext, "mp4", 3);
+
 	i = 0;
-	sprintf(filename, "vidcap-%02d.mp4", i);
+	sprintf(filename, "vidcap-%02d.%s", i, ext);
 	while ((dir = opendir(directory)) != NULL)
 	{
 		found = 0;
@@ -595,7 +611,7 @@ thread_func (void *data)
 		if (found)
 		{
 			i++;
-			sprintf(filename, "vidcap-%02d.mp4", i);
+			sprintf(filename, "vidcap-%02d.%s", i, ext);
 		}
 		else
 		{
@@ -611,18 +627,11 @@ thread_func (void *data)
 
 	for (i = 0; i < strlen (tmpcmd); i++)
 	{
-		if (!strcmp(&tmpcmd[i], "%f"))
+		if (!strncmp(&tmpcmd[i], "%f.", 3))
 		{
 			found = 1;
 			tmpcmd[i] = '\0';
-			asprintf(&command, "%s%s%s", "cat /tmp/vidcap.out | ", tmpcmd, fullpath);
-			break;
-		}
-		else if (!strncmp(&tmpcmd[i], "%f ", 3))
-		{
-			found = 1;
-			tmpcmd[i] = '\0';
-			asprintf(&command, "%s%s%s%s", "cat /tmp/vidcap.out | ", tmpcmd, fullpath, &tmpcmd[i+3]);
+			asprintf(&command, "%s%s%s%s", "cat /tmp/vidcap.out | ", tmpcmd, fullpath, &tmpcmd[i+6]);
 			break;
 		}
 	}

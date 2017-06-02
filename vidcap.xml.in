@@ -18,8 +18,8 @@
 			</option>
 			<option name="command" type="string">
 				<_short>Command</_short>
-				<_long>Command to be used for encoding video. Use a dash (-) for the input file and %f for the output file.</_long>
-				<default>avconv -i - %f</default>
+				<_long>Command to be used for encoding video. Use a dash (-) for the input file and %f.ext for the output file.</_long>
+				<default>avconv -i - %f.mp4</default>
 			</option>
 		</display>
     </plugin>
