@@ -70,6 +70,7 @@ typedef struct _VidcapScreen
 {
     PaintScreenProc	paintScreen;
     PreparePaintScreenProc	preparePaintScreen;
+    DonePaintScreenProc	donePaintScreen;
 } VidcapScreen;
 
 #define VIDCAP_DISPLAY(d) PLUGIN_DISPLAY(d, Vidcap, v)
@@ -240,23 +241,37 @@ vidcapPreparePaintScreen (CompScreen *s, int ms)
 	if (vd->recording)
 	{
 		vd->ms += ms;
-		damageScreen (s);
 	}
 	if (vd->recording || vd->thread_running || vd->done)
 	{
 		vd->t += ms;
-		if (!vd->done && vd->t > 400)
+		if (!vd->done && vd->t > 500)
 		{
-			vd->t -= 400;
+			vd->t -= 500;
 			vd->show_dot = !vd->show_dot;
 		}
-		if (vd->done && vd->t > 2000)
+		if (vd->done && vd->t > 1500)
 			vd->done = FALSE;
 	}
 
 	UNWRAP (vs, s, preparePaintScreen);
 	(*s->preparePaintScreen) (s, ms); 
 	WRAP (vs, s, preparePaintScreen, vidcapPreparePaintScreen);
+}
+
+static void
+vidcapDonePaintScreen (CompScreen *s)
+{
+	VIDCAP_SCREEN (s);
+	VIDCAP_DISPLAY (s->display);
+
+	if (vd->recording || vd->thread_running || vd->done)
+		damageScreen (s);
+
+	UNWRAP (vs, s, donePaintScreen);
+	(*s->donePaintScreen) (s); 
+	WRAP (vs, s, donePaintScreen, vidcapDonePaintScreen);
+		
 }
 
 static void
@@ -386,8 +401,6 @@ vidcapPaintScreen (CompScreen   *screen,
 		glColor4usv (defaultColor);
 
 		glPopMatrix ();
-
-		damageScreen (screen);
 	}
 }
 
@@ -736,6 +749,7 @@ vidcapInitScreen (CompPlugin *p,
     s->base.privates[vd->screenPrivateIndex].ptr = vs;
 
 	WRAP (vs, s, preparePaintScreen, vidcapPreparePaintScreen);
+	WRAP (vs, s, donePaintScreen, vidcapDonePaintScreen);
 	WRAP (vs, s, paintScreen, vidcapPaintScreen);
 
 	return TRUE;
@@ -749,6 +763,7 @@ vidcapFiniScreen (CompPlugin *p,
     VIDCAP_SCREEN (s);
 
     UNWRAP (vs, s, preparePaintScreen);
+    UNWRAP (vs, s, donePaintScreen);
     UNWRAP (vs, s, paintScreen);
 
     free (vs);
