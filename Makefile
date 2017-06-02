@@ -452,7 +452,6 @@ install: $(DESTDIR) all
 	@if [ -e plugin-$(PLUGIN).svg ]; then \
 		mkdir -p $(ICONDIR); \
 		$(INSTALL) --mode=u=rw,go=r,a-s plugin-$(PLUGIN).svg $(ICONDIR)/plugin-$(PLUGIN).svg; \
-		$(ECHO) "icon found!"; \
 		$(ECHO) -e "\r\033[0minstall   : \033[34m$(ICONDIR)/plugin-$(PLUGIN).svg\033[0m"; \
 	fi
 
