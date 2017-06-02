@@ -386,7 +386,7 @@ vidcapPaintScreen (CompScreen   *screen,
 		if (vd->recording)
 			glColor4f(1.0, 0.0, 0.0, 0.5);
 		else if (vd->thread_running)
-			glColor4f(0.0, 0.5, 0.8, 0.5);
+			glColor4f(0.2, 0.8, 0.5, 0.5);
 		else if (vd->done)
 			glColor4f(0.0, 1.0, 0.0, cosf ((vd->t / 2000.0f) * M_PI * 0.5));
 
