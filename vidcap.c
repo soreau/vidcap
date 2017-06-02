@@ -338,7 +338,7 @@ vidcapPaintScreen (CompScreen   *screen,
 			width = b[i].x2 - b[i].x1;
 			height = b[i].y2 - b[i].y1;
 
-			y_orig = outputs[i].height - b[i].y2;
+			y_orig = screen->height - b[i].y2;
 
 			glReadPixels(b[i].x1, y_orig, outputs[i].width, outputs[i].height,
 					GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid *) pixel_data);
