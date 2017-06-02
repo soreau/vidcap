@@ -284,12 +284,12 @@ vidcapPaintScreen (CompScreen   *screen,
 		uint32_t msecs;
 		uint32_t nrects;
 	} header;
-	struct {
+	struct box {
 		uint32_t x1;
 		uint32_t y1;
 		uint32_t x2;
 		uint32_t y2;
-	} box;
+	};
 	uint32_t delta, prev, *d, *s, *p, next, *outbuf, *pixel_data;
 	int j, k, width, height, run, stride, y_orig, size;
 	struct iovec v[2];
@@ -303,63 +303,73 @@ vidcapPaintScreen (CompScreen   *screen,
 
 	if (vd->recording)
 	{
-		size = outputs[0].width * outputs[0].height * 4;
-
-		pixel_data = malloc (size);
-		if (!pixel_data)
-			return;
-
-		outbuf = pixel_data;
-
-		box.x1 = 0;
-		box.y1 = 0;
-		box.x2 = outputs[0].width;
-		box.y2 = outputs[0].height;
+		int i;
+		struct box *b = malloc (screen->nOutputDev * sizeof (struct box));
+		for (i = 0; i < screen->nOutputDev; i++)
+		{
+			b[i].x1 = outputs[i].region.extents.x1;
+			b[i].y1 = outputs[i].region.extents.y1;
+			b[i].x2 = outputs[i].region.extents.x2;
+			b[i].y2 = outputs[i].region.extents.y2;
+		}
 
 		header.msecs = vd->ms;
-		header.nrects = 1; // s->nOutputDev;
+		header.nrects = screen->nOutputDev;
 
 		v[0].iov_base = &header;
 		v[0].iov_len = sizeof header;
-		v[1].iov_base = &box;
-		v[1].iov_len = sizeof box;
+		v[1].iov_base = b;
+		v[1].iov_len = screen->nOutputDev * sizeof (struct box);
 
 		vd->total += writev (vd->fd, v, 2);
-		stride = outputs[0].width;
 
-		width = box.x2 - box.x1;
-		height = box.y2 - box.y1;
+		stride = screen->width;
 
-		y_orig = outputs[0].height - box.y2;
+		for (i = 0; i < screen->nOutputDev; i++)
+		{
+			size = outputs[i].width * outputs[i].height * 4;
 
-		glReadPixels(0, 0, outputs[0].width, outputs[0].height, GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid *) pixel_data);
+			pixel_data = malloc (size);
+			if (!pixel_data)
+				return;
 
-		p = outbuf;
-		run = prev = 0; /* quiet gcc */
-		for (j = 0; j < height; j++) {
-			s = pixel_data + width * j;
-			y_orig = box.y2 - j - 1;
-			d = vd->frame + stride * y_orig + box.x1;
+			outbuf = pixel_data;
 
-			for (k = 0; k < width; k++) {
-				next = *s++;
-				delta = component_delta(next, *d);
-				*d++ = next;
-				if (run == 0 || delta == prev) {
-					run++;
-				} else {
-					p = output_run(p, prev, run);
-					run = 1;
+			width = b[i].x2 - b[i].x1;
+			height = b[i].y2 - b[i].y1;
+
+			y_orig = outputs[i].height - b[i].y2;
+
+			glReadPixels(b[i].x1, y_orig, outputs[i].width, outputs[i].height,
+					GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid *) pixel_data);
+
+			p = outbuf;
+			run = prev = 0;
+			for (j = 0; j < height; j++) {
+				s = pixel_data + width * j;
+				y_orig = b[i].y2 - j - 1;
+				d = vd->frame + stride * y_orig + b[i].x1;
+
+				for (k = 0; k < width; k++) {
+					next = *s++;
+					delta = component_delta(next, *d);
+					*d++ = next;
+					if (run == 0 || delta == prev) {
+						run++;
+					} else {
+						p = output_run(p, prev, run);
+						run = 1;
+					}
+					prev = delta;
 				}
-				prev = delta;
 			}
+
+			p = output_run(p, prev, run);
+
+			vd->total += write(vd->fd, outbuf, (p - outbuf) * 4);
+
+			free (pixel_data);
 		}
-
-		p = output_run(p, prev, run);
-
-		vd->total += write(vd->fd, outbuf, (p - outbuf) * 4);
-
-		free (pixel_data);
 	}
 
 	if ((vd->recording && vd->show_dot) || (vd->thread_running && vd->show_dot) || vd->done)
