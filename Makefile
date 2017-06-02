@@ -73,11 +73,13 @@ ifeq ($(BUILD_GLOBAL),true)
 	XMLDIR = $(shell pkg-config --variable=prefix compiz)/share/compiz
 	IMAGEDIR = $(shell pkg-config --variable=prefix compiz)/share/compiz
 	DATADIR = $(shell pkg-config --variable=prefix compiz)/share/compiz
+	ICONDIR = $(shell pkg-config --variable=prefix compiz)/share/compiz/icons
 else
 	DESTDIR = $(HOME)/.compiz/plugins
 	XMLDIR = $(HOME)/.compiz/metadata
 	IMAGEDIR = $(HOME)/.compiz/images
 	DATADIR = $(HOME)/.compiz/data
+	ICONDIR = $(HOME)/.compiz/icons
 endif
 
 BUILDDIR = build
@@ -446,6 +448,12 @@ install: $(DESTDIR) all
 		    $(ECHO) -e "\r\033[0minstall   : \033[34m$(IMAGEDIR)/$$FILE\033[0m"; \
 		fi; \
 	    done \
+	fi
+	@if [ -e plugin-$(PLUGIN).svg ]; then \
+		mkdir -p $(ICONDIR); \
+		$(INSTALL) --mode=u=rw,go=r,a-s plugin-$(PLUGIN).svg $(ICONDIR)/plugin-$(PLUGIN).svg; \
+		$(ECHO) "icon found!"; \
+		$(ECHO) -e "\r\033[0minstall   : \033[34m$(ICONDIR)/plugin-$(PLUGIN).svg\033[0m"; \
 	fi
 
 uninstall:	
