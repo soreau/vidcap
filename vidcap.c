@@ -39,6 +39,7 @@
 #include <sys/mman.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <math.h>
 
 #include <compiz-core.h>
 
@@ -60,6 +61,9 @@ typedef struct _VidcapDisplay
 
     pthread_t thread;
     Bool thread_running;
+
+	int t;
+	Bool show_dot, done;
 } VidcapDisplay;
 
 typedef struct _VidcapScreen
@@ -238,6 +242,17 @@ vidcapPreparePaintScreen (CompScreen *s, int ms)
 		vd->ms += ms;
 		damageScreen (s);
 	}
+	if (vd->recording || vd->thread_running || vd->done)
+	{
+		vd->t += ms;
+		if (!vd->done && vd->t > 400)
+		{
+			vd->t -= 400;
+			vd->show_dot = !vd->show_dot;
+		}
+		if (vd->done && vd->t > 2000)
+			vd->done = FALSE;
+	}
 
 	UNWRAP (vs, s, preparePaintScreen);
 	(*s->preparePaintScreen) (s, ms); 
@@ -330,6 +345,49 @@ vidcapPaintScreen (CompScreen   *screen,
 		vd->total += write(vd->fd, outbuf, (p - outbuf) * 4);
 
 		free (pixel_data);
+	}
+
+	if ((vd->recording && vd->show_dot) || (vd->thread_running && vd->show_dot) || vd->done)
+	{
+		int angle;
+		double vectorX, vectorY;
+		int centerX = screen->width - 50;
+		int centerY = screen->height - 50;
+
+		glPushMatrix ();
+
+		prepareXCoords (screen, screen->outputDev, -DEFAULT_Z_CAMERA);
+
+		if (vd->recording)
+			glColor4f(1.0, 0.0, 0.0, 0.5);
+		else if (vd->thread_running)
+			glColor4f(0.0, 0.5, 0.8, 0.5);
+		else if (vd->done)
+			glColor4f(0.0, 1.0, 0.0, cosf ((vd->t / 2000.0f) * M_PI * 0.5));
+
+		glEnable (GL_BLEND);
+
+		glBegin (GL_TRIANGLE_FAN);
+		glVertex2d (centerX, centerY);
+		for (angle = 0; angle <= 360; angle += 1)
+		{
+			vectorX = centerX +
+					 (25 * sinf (angle * DEG2RAD));
+			vectorY = centerY +
+					 (25 * cosf (angle * DEG2RAD));
+			glVertex2d (vectorX, vectorY);
+		}
+		glVertex2d (centerX, centerY +
+					25);
+		glEnd();
+
+		glDisable (GL_BLEND);
+
+		glColor4usv (defaultColor);
+
+		glPopMatrix ();
+
+		damageScreen (screen);
 	}
 }
 
@@ -565,6 +623,8 @@ thread_func (void *data)
 	VIDCAP_DISPLAY (d);
 
 	vd->thread_running = FALSE;
+	vd->done = TRUE;
+	vd->t = 0;
 
 	return NULL;
 }
@@ -603,6 +663,9 @@ vidcapToggle (CompDisplay     *d,
 					O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
 
 		vd->total += write(vd->fd, &header, sizeof header);
+
+		vd->t = 0;
+		vd->done = FALSE;
 	}
 	else
 	{
