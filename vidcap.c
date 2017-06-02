@@ -640,7 +640,7 @@ thread_func (void *data)
 	if (!found)
 		command = strdup ("cat /tmp/vidcap.out | avconv -i - /tmp/vidcap.mp4");
 
-	system (command)
+	system (command);
 
 	system ("rm -rf /tmp/vidcap.out");
 	system ("rm -rf /tmp/vidcap.wcap");
