@@ -291,7 +291,7 @@ vidcapPaintScreen (CompScreen   *screen,
 		uint32_t y2;
 	};
 	uint32_t delta, prev, *d, *s, *p, next, *outbuf, *pixel_data;
-	int j, k, width, height, run, stride, y_orig, size;
+	int i, j, k, width, height, run, stride, y_orig, size;
 	struct iovec v[2];
 
     VIDCAP_SCREEN (screen);
@@ -303,7 +303,6 @@ vidcapPaintScreen (CompScreen   *screen,
 
 	if (vd->recording)
 	{
-		int i;
 		struct box *b = malloc (screen->nOutputDev * sizeof (struct box));
 		for (i = 0; i < screen->nOutputDev; i++)
 		{
@@ -374,41 +373,48 @@ vidcapPaintScreen (CompScreen   *screen,
 
 	if ((vd->recording && vd->show_dot) || (vd->thread_running && vd->show_dot) || vd->done)
 	{
-		int angle;
-		double vectorX, vectorY;
-		int centerX = screen->width - 50;
-		int centerY = screen->height - 50;
+		glViewport (0, 0, screen->width, screen->height);
 
 		glPushMatrix ();
 
-		prepareXCoords (screen, screen->outputDev, -DEFAULT_Z_CAMERA);
+		glTranslatef (-0.5f, -0.5f, -DEFAULT_Z_CAMERA);
+		glScalef (1.0f  / screen->width, -1.0f / screen->height, 1.0f);
+		glTranslatef (0, -screen->height, 0.0f);
 
-		if (vd->recording)
-			glColor4f(1.0, 0.0, 0.0, 0.5);
-		else if (vd->thread_running)
-			glColor4f(0.0, 0.5, 0.8, 0.5);
-		else if (vd->done)
-			glColor4f(0.0, 1.0, 0.0, cosf ((vd->t / 2000.0f) * M_PI * 0.5));
-
-		glEnable (GL_BLEND);
-
-		glBegin (GL_TRIANGLE_FAN);
-		glVertex2d (centerX, centerY);
-		for (angle = 0; angle <= 360; angle += 1)
+		for (i = 0; i < screen->nOutputDev; i++)
 		{
-			vectorX = centerX +
-					 (25 * sinf (angle * DEG2RAD));
-			vectorY = centerY +
-					 (25 * cosf (angle * DEG2RAD));
-			glVertex2d (vectorX, vectorY);
+			int angle;
+			double vectorX, vectorY;
+			int centerX = outputs[i].region.extents.x2 - 50;
+			int centerY = outputs[i].region.extents.y2 - 50;
+
+			if (vd->recording)
+				glColor4f(1.0, 0.0, 0.0, 0.5);
+			else if (vd->thread_running)
+				glColor4f(0.0, 0.5, 0.8, 0.5);
+			else if (vd->done)
+				glColor4f(0.0, 1.0, 0.0, cosf ((vd->t / 2000.0f) * M_PI * 0.5));
+
+			glEnable (GL_BLEND);
+
+			glBegin (GL_TRIANGLE_FAN);
+			glVertex2d (centerX, centerY);
+			for (angle = 0; angle <= 360; angle++)
+			{
+				vectorX = centerX +
+						 (25 * sinf (angle * DEG2RAD));
+				vectorY = centerY +
+						 (25 * cosf (angle * DEG2RAD));
+				glVertex2d (vectorX, vectorY);
+			}
+			glVertex2d (centerX, centerY +
+						25);
+			glEnd();
+
+			glDisable (GL_BLEND);
+
+			glColor4usv (defaultColor);
 		}
-		glVertex2d (centerX, centerY +
-					25);
-		glEnd();
-
-		glDisable (GL_BLEND);
-
-		glColor4usv (defaultColor);
 
 		glPopMatrix ();
 	}
