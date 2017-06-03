@@ -450,9 +450,16 @@ install: $(DESTDIR) all
 	    done \
 	fi
 	@if [ -e plugin-$(PLUGIN).svg ]; then \
+	    if [ '$(color)' != 'no' ]; then \
+		$(ECHO) -n -e "\033[0;1;5minstall   \033[0m: \033[0;31m$(ICONDIR)/plugin-$(PLUGIN).svg\033[0m"; \
+	    else \
+		$(ECHO) "install   : $(ICONDIR)/plugin-$(PLUGIN).svg"; \
+	    fi; \
 		mkdir -p $(ICONDIR); \
 		$(INSTALL) --mode=u=rw,go=r,a-s plugin-$(PLUGIN).svg $(ICONDIR)/plugin-$(PLUGIN).svg; \
+	    if [ '$(color)' != 'no' ]; then \
 		$(ECHO) -e "\r\033[0minstall   : \033[34m$(ICONDIR)/plugin-$(PLUGIN).svg\033[0m"; \
+	    fi; \
 	fi
 
 uninstall:	
@@ -537,4 +544,15 @@ uninstall:
 		    $(ECHO) -e "\r\033[0muninstall : \033[34m$(IMAGEDIR)/$$FILE\033[0m"; \
 		fi; \
 	    done \
+	fi
+	@if [ -e $(ICONDIR)/plugin-$(PLUGIN).svg ]; then \
+	    if [ '$(color)' != 'no' ]; then \
+		$(ECHO) -n -e "\033[0;1;5muninstall \033[0m: \033[0;31m$(ICONDIR)/plugin-$(PLUGIN).svg\033[0m"; \
+	    else \
+		$(ECHO) "uninstall : $(ICONDIR)/plugin-$(PLUGIN).svg"; \
+	    fi; \
+	    rm -f $(ICONDIR)/plugin-$(PLUGIN).svg; \
+	    if [ '$(color)' != 'no' ]; then \
+		$(ECHO) -e "\r\033[0muninstall : \033[34m$(ICONDIR)/plugin-$(PLUGIN).svg\033[0m"; \
+	    fi; \
 	fi
