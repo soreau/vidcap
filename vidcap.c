@@ -327,7 +327,10 @@ vidcapPaintScreen (CompScreen   *screen,
 
 		for (i = 0; i < screen->nOutputDev; i++)
 		{
-			size = outputs[i].width * outputs[i].height * 4;
+			width = outputs[i].width;
+			height = outputs[i].height;
+
+			size = width * height * 4;
 
 			pixel_data = malloc (size);
 			if (!pixel_data)
@@ -335,12 +338,9 @@ vidcapPaintScreen (CompScreen   *screen,
 
 			outbuf = pixel_data;
 
-			width = b[i].x2 - b[i].x1;
-			height = b[i].y2 - b[i].y1;
-
 			y_orig = screen->height - b[i].y2;
 
-			glReadPixels(b[i].x1, y_orig, outputs[i].width, outputs[i].height,
+			glReadPixels(b[i].x1, y_orig, width, height,
 					GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid *) pixel_data);
 
 			p = outbuf;
