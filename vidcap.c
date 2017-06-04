@@ -691,7 +691,7 @@ vidcapToggle (CompDisplay     *d,
 				int             nOption)
 {
 	VIDCAP_DISPLAY (d);
-	struct { uint32_t magic, format, width, height; } header;
+	struct wcap_header header;
 
 	vd->recording = !vd->recording;
 
