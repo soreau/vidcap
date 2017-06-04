@@ -373,8 +373,9 @@ vidcapPaintScreen (CompScreen   *screen,
 		}
 	}
 
-	if (((vd->recording && vd->show_dot) || (vd->thread_running && vd->show_dot) || vd->done) &&
-														vidcapGetDrawIndicator (screen->display))
+	if (((vd->recording && vd->show_dot) ||
+			(vd->thread_running && vd->show_dot) || vd->done) &&
+						vidcapGetDrawIndicator (screen->display))
 	{
 		glViewport (0, 0, screen->width, screen->height);
 
@@ -396,7 +397,8 @@ vidcapPaintScreen (CompScreen   *screen,
 			else if (vd->thread_running)
 				glColor4f(0.0, 0.5, 0.8, 0.5);
 			else if (vd->done)
-				glColor4f(0.0, 1.0, 0.0, cosf ((vd->dot_timer / 2000.0f) * M_PI * 0.5));
+				glColor4f(0.0, 1.0, 0.0,
+						cosf ((vd->dot_timer / 2000.0f) * M_PI * 0.5));
 
 			glEnable (GL_BLEND);
 
@@ -525,7 +527,8 @@ write_file (int fd)
 
 	compLogMessage ("vidcap", CompLogLevelInfo, "Decoding");
 
-	size = asprintf (&header, "YUV4MPEG2 C420jpeg W%d H%d F%d:%d Ip A0:0\n", decoder->width, decoder->height, num, denom);
+	size = asprintf (&header, "YUV4MPEG2 C420jpeg W%d H%d F%d:%d Ip A0:0\n",
+							decoder->width, decoder->height, num, denom);
 	f = fdopen(fd, "w");
 	fwrite(header, 1, size, f);
 	free (header);
@@ -648,7 +651,8 @@ thread_func (void *data)
 							strncmp(&tmpcmd[j], "\0", 1); j++);
 			j = j - (i + 3);
 			tmpcmd[i] = '\0';
-			asprintf(&command, "cat %s | %s%s%s", RAWFILE, tmpcmd, fullpath, &tmpcmd[i+3+j]);
+			asprintf(&command, "cat %s | %s%s%s",
+						RAWFILE, tmpcmd, fullpath, &tmpcmd[i+3+j]);
 			break;
 		}
 	}
