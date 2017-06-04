@@ -46,7 +46,8 @@
 #include "vidcap_options.h"
 #include "wcap-decode.h"
 
-#define FILENAME "/tmp/vidcap.wcap"
+#define WCAPFILE "/tmp/vidcap.wcap"
+#define RAWFILE "/tmp/vidcap.raw"
 
 static int VidcapDisplayPrivateIndex;
 
@@ -512,7 +513,7 @@ output_yuv_frame(struct wcap_decoder *decoder, FILE *f)
 static void
 write_file (int fd)
 {
-	struct wcap_decoder *decoder = wcap_decoder_create(FILENAME);
+	struct wcap_decoder *decoder = wcap_decoder_create(WCAPFILE);
 	int i, has_frame;
 	int num = 30, denom = 1;
 	uint32_t msecs, frame_time;
@@ -566,7 +567,7 @@ thread_func (void *data)
 	char filename[256], ext[4];
 	int i, found;
 
-	fd = open("/tmp/vidcap.out",
+	fd = open(RAWFILE,
 					O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
 
 	write_file (fd);
@@ -638,20 +639,20 @@ thread_func (void *data)
 		{
 			found = 1;
 			tmpcmd[i] = '\0';
-			asprintf(&command, "%s%s%s%s", "cat /tmp/vidcap.out | ", tmpcmd, fullpath, &tmpcmd[i+6]);
+			asprintf(&command, "cat %s | %s%s%s", RAWFILE, tmpcmd, fullpath, &tmpcmd[i+6]);
 			break;
 		}
 	}
 
 	if (!found)
-		command = strdup ("cat /tmp/vidcap.out | avconv -i - /tmp/vidcap.mp4");
+		asprintf (&command, "cat %s | avconv -i - /tmp/vidcap.mp4", RAWFILE);
 
 	system (command);
 
-	system ("rm -rf /tmp/vidcap.out");
-	system ("rm -rf /tmp/vidcap.wcap");
-
 	compLogMessage ("vidcap", CompLogLevelInfo, "Created: %s\n", fullpath);
+
+	remove (RAWFILE);
+	remove (WCAPFILE);
 
 	free (tmpcmd);
 	free (command);
@@ -697,7 +698,7 @@ vidcapToggle (CompDisplay     *d,
 		header.width = d->screens->width;
 		header.height = d->screens->height;
 
-		vd->fd = open(FILENAME,
+		vd->fd = open(WCAPFILE,
 					O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
 
 		vd->total += write(vd->fd, &header, sizeof header);
