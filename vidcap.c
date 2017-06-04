@@ -55,7 +55,6 @@ typedef struct _VidcapDisplay
 {
     int screenPrivateIndex;
     Bool recording;
-    int total;
     uint32_t ms;
     int fd;
     uint32_t *frame;
@@ -323,7 +322,7 @@ vidcapPaintScreen (CompScreen   *screen,
 		v[1].iov_base = b;
 		v[1].iov_len = screen->nOutputDev * sizeof (struct box);
 
-		vd->total += writev (vd->fd, v, 2);
+		writev (vd->fd, v, 2);
 
 		stride = screen->width;
 
@@ -368,7 +367,7 @@ vidcapPaintScreen (CompScreen   *screen,
 
 			p = output_run(p, prev, run);
 
-			vd->total += write(vd->fd, outbuf, (p - outbuf) * 4);
+			write(vd->fd, outbuf, (p - outbuf) * 4);
 
 			free (pixel_data);
 		}
@@ -701,7 +700,6 @@ vidcapToggle (CompDisplay     *d,
 		}
 		memset(vd->frame, 0, d->screens->width * d->screens->height * 4);
 		vd->ms = 0;
-		vd->total = 0;
 
 		header.magic = WCAP_HEADER_MAGIC;
 		header.format = WCAP_FORMAT_XBGR8888;
@@ -711,7 +709,7 @@ vidcapToggle (CompDisplay     *d,
 		vd->fd = open(WCAPFILE,
 					O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
 
-		vd->total += write(vd->fd, &header, sizeof header);
+		write(vd->fd, &header, sizeof header);
 
 		vd->dot_timer = 0;
 		vd->done = FALSE;
