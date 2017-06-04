@@ -10,11 +10,6 @@
 				<_long>Start and stop recording</_long>
 				<default>&lt;Super&gt;v</default>
 			</option>
-			<option name="draw_indicator" type="bool">
-				<_short>Draw Status Indicator</_short>
-				<_long>Draw color coded status dot</_long>
-				<default>true</default>
-			</option>
 			<option name="directory" type="string">
 				<_short>Directory</_short>
 				<_long>Directory to store videos</_long>
@@ -25,6 +20,11 @@
 				<_short>Command</_short>
 				<_long>Command to be used for encoding video. Use a dash (-) for the input file and %f.ext for the output file</_long>
 				<default>avconv -i - %f.mp4</default>
+			</option>
+			<option name="draw_indicator" type="bool">
+				<_short>Draw Status Indicator</_short>
+				<_long>Draw color coded status dot</_long>
+				<default>true</default>
 			</option>
 		</display>
     </plugin>
