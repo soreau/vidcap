@@ -56,7 +56,7 @@ typedef struct _VidcapDisplay
     int screenPrivateIndex;
     Bool recording;
     int total;
-    int ms;
+    uint32_t ms;
     int fd;
     uint32_t *frame;
 
