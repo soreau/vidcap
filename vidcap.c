@@ -570,7 +570,7 @@ thread_func (void *data)
 	struct stat st;
 	char *directory, *command, *tmpcmd, *fullpath;
 	char filename[256], ext[32];
-	int i, j, found;
+	int i, j, ret, found;
 
 	fd = open(RAWFILE,
 					O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
@@ -637,10 +637,11 @@ thread_func (void *data)
 		}
 		closedir (dir);
 	}
-	asprintf (&fullpath, "%s/%s", directory, filename);
+	if (asprintf (&fullpath, "%s/%s", directory, filename) <= 0)
+		fullpath = strdup ("/tmp/vidcap.mp4");
 
 	tmpcmd = strdup (vidcapGetCommand (d));
-	found = 0;
+	ret = found = 0;
 
 	for (i = 0; i < strlen (tmpcmd); i++)
 	{
@@ -651,16 +652,17 @@ thread_func (void *data)
 							strncmp(&tmpcmd[j], "\0", 1); j++);
 			j = j - (i + 3);
 			tmpcmd[i] = '\0';
-			asprintf(&command, "cat %s | %s%s%s",
+			ret = asprintf(&command, "cat %s | %s%s%s",
 						RAWFILE, tmpcmd, fullpath, &tmpcmd[i+3+j]);
 			break;
 		}
 	}
 
 	if (!found)
-		asprintf (&command, "cat %s | avconv -i - /tmp/vidcap.mp4", RAWFILE);
+		ret = asprintf (&command, "cat %s | avconv -i - %s", RAWFILE, fullpath);
 
-	system (command);
+	if (ret > 0)
+		system (command);
 
 	compLogMessage ("vidcap", CompLogLevelInfo, "Created: %s\n", fullpath);
 
