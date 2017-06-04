@@ -243,7 +243,8 @@ vidcapPreparePaintScreen (CompScreen *s, int ms)
 	{
 		vd->ms += ms;
 	}
-	if (vd->recording || vd->thread_running || vd->done)
+	if ((vd->recording || vd->thread_running || vd->done) &&
+									vidcapGetDrawIndicator (s->display))
 	{
 		vd->t += ms;
 		if (!vd->done && vd->t > 500)
@@ -266,7 +267,8 @@ vidcapDonePaintScreen (CompScreen *s)
 	VIDCAP_SCREEN (s);
 	VIDCAP_DISPLAY (s->display);
 
-	if (vd->recording || vd->thread_running || vd->done)
+	if (vd->recording || ((vd->thread_running || vd->done) &&
+									vidcapGetDrawIndicator (s->display)))
 		damageScreen (s);
 
 	UNWRAP (vs, s, donePaintScreen);
@@ -372,7 +374,8 @@ vidcapPaintScreen (CompScreen   *screen,
 		}
 	}
 
-	if ((vd->recording && vd->show_dot) || (vd->thread_running && vd->show_dot) || vd->done)
+	if (((vd->recording && vd->show_dot) || (vd->thread_running && vd->show_dot) || vd->done) &&
+														vidcapGetDrawIndicator (screen->display))
 	{
 		glViewport (0, 0, screen->width, screen->height);
 
