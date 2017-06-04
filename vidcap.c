@@ -63,7 +63,7 @@ typedef struct _VidcapDisplay
     pthread_t thread;
     Bool thread_running;
 
-	int t;
+	int dot_timer;
 	Bool show_dot, done;
 } VidcapDisplay;
 
@@ -246,13 +246,13 @@ vidcapPreparePaintScreen (CompScreen *s, int ms)
 	if ((vd->recording || vd->thread_running || vd->done) &&
 									vidcapGetDrawIndicator (s->display))
 	{
-		vd->t += ms;
-		if (!vd->done && vd->t > 500)
+		vd->dot_timer += ms;
+		if (!vd->done && vd->dot_timer > 500)
 		{
-			vd->t -= 500;
+			vd->dot_timer -= 500;
 			vd->show_dot = !vd->show_dot;
 		}
-		if (vd->done && vd->t > 1500)
+		if (vd->done && vd->dot_timer > 1500)
 			vd->done = FALSE;
 	}
 
@@ -397,7 +397,7 @@ vidcapPaintScreen (CompScreen   *screen,
 			else if (vd->thread_running)
 				glColor4f(0.0, 0.5, 0.8, 0.5);
 			else if (vd->done)
-				glColor4f(0.0, 1.0, 0.0, cosf ((vd->t / 2000.0f) * M_PI * 0.5));
+				glColor4f(0.0, 1.0, 0.0, cosf ((vd->dot_timer / 2000.0f) * M_PI * 0.5));
 
 			glEnable (GL_BLEND);
 
@@ -673,7 +673,7 @@ thread_func (void *data)
 
 	vd->thread_running = FALSE;
 	vd->done = TRUE;
-	vd->t = 0;
+	vd->dot_timer = 0;
 
 	return NULL;
 }
@@ -713,7 +713,7 @@ vidcapToggle (CompDisplay     *d,
 
 		vd->total += write(vd->fd, &header, sizeof header);
 
-		vd->t = 0;
+		vd->dot_timer = 0;
 		vd->done = FALSE;
 	}
 	else
