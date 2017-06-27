@@ -693,9 +693,16 @@ vidcapToggle (CompDisplay     *d,
 	VIDCAP_DISPLAY (d);
 	struct wcap_header header;
 
+	if (vd->thread_running)
+	{
+		vd->recording = FALSE;
+		compLogMessage ("vidcap", CompLogLevelInfo, "Processing, please wait");
+		return TRUE;
+	}
+
 	vd->recording = !vd->recording;
 
-	if (vd->recording && !vd->thread_running)
+	if (vd->recording)
 	{
 		compLogMessage ("vidcap", CompLogLevelInfo, "Recording started");
 		vd->frame = malloc (d->screens->width * d->screens->height * 4);
