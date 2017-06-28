@@ -401,7 +401,7 @@ vidcapPaintScreen (CompScreen   *screen,
 				glColor4f(0.0, 0.5, 0.8, 0.5);
 			else if (vd->done)
 				glColor4f(0.0, 1.0, 0.0,
-						cosf ((vd->dot_timer / (float) DONE_MS) * M_PI * 0.5));
+					cosf ((vd->dot_timer / (float) DONE_MS) * M_PI * 0.5));
 
 			glEnable (GL_BLEND);
 
@@ -536,7 +536,6 @@ output_yuv_frame(struct wcap_decoder *decoder, FILE *f)
 
 	size = decoder->width * decoder->height * 3 / 2;
 
-
 	out = malloc(size);
 
 	convert_to_yv12(decoder, out);
@@ -604,21 +603,22 @@ thread_func (void *data)
 	char filename[256], ext[32];
 	int i, j, ret, found;
 
-	fd = open(RAWFILE,
-					O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
+	fd = open(RAWFILE, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
 
 	write_file (fd);
 
 	close (fd);
 
-	if (stat (vidcapGetDirectory (d), &st) == 0 && S_ISDIR(st.st_mode))
+	if (stat (vidcapGetDirectory (d), &st) == 0 && S_ISDIR(st.st_mode) &&
+			access(vidcapGetDirectory (d), W_OK) == 0)
 	{
 		directory = strdup (vidcapGetDirectory (d));
 	}
 	else
 	{
 		compLogMessage ("vidcap", CompLogLevelWarn,
-			"Could not stat %s or not a directory, defaulting to /tmp\n",
+			"Could not stat '%s' or not a writable directory, "
+										"defaulting to /tmp\n",
 			vidcapGetDirectory (d));
 		directory = strdup ("/tmp");
 	}
