@@ -55,16 +55,13 @@ static int VidcapDisplayPrivateIndex;
 typedef struct _VidcapDisplay
 {
     int screenPrivateIndex;
-    Bool recording;
-    uint32_t ms;
     int fd;
+    uint32_t ms;
     uint32_t *frame;
 
-    pthread_t thread;
-    Bool thread_running;
-
 	int dot_timer;
-	Bool show_dot, done;
+    pthread_t thread;
+    Bool thread_running, recording, show_dot, done;
 } VidcapDisplay;
 
 typedef struct _VidcapScreen
@@ -236,19 +233,18 @@ component_delta(uint32_t next, uint32_t prev)
 static void
 vidcapPreparePaintScreen (CompScreen *s, int ms)
 {
+	int delay_ms;
 	VIDCAP_SCREEN (s);
 	VIDCAP_DISPLAY (s->display);
 
 	if (vd->recording)
-	{
 		vd->ms += ms;
-	}
-	if ((vd->recording || vd->thread_running || vd->done) &&
-									vidcapGetDrawIndicator (s->display))
-	{
+
+	if (vidcapGetDrawIndicator (s->display) &&
+		(vd->recording || vd->thread_running || vd->done)) {
 		vd->dot_timer += ms;
-		if (!vd->done && vd->dot_timer > (vd->thread_running ? SPIN_MS : BLINK_MS))
-		{
+		delay_ms = (vd->thread_running ? SPIN_MS : BLINK_MS);
+		if (!vd->done && vd->dot_timer > delay_ms)	{
 			if (vd->thread_running)
 				vd->dot_timer -= SPIN_MS;
 			else
@@ -270,8 +266,8 @@ vidcapDonePaintScreen (CompScreen *s)
 	VIDCAP_SCREEN (s);
 	VIDCAP_DISPLAY (s->display);
 
-	if (vd->recording || ((vd->thread_running || vd->done) &&
-									vidcapGetDrawIndicator (s->display)))
+	if (vidcapGetDrawIndicator (s->display) &&
+		(vd->recording || vd->thread_running || vd->done))
 		damageScreen (s);
 
 	UNWRAP (vs, s, donePaintScreen);
@@ -307,11 +303,9 @@ vidcapPaintScreen (CompScreen   *screen,
 	(*screen->paintScreen) (screen, outputs, numOutput, mask); 
 	WRAP (vs, screen, paintScreen, vidcapPaintScreen);
 
-	if (vd->recording)
-	{
+	if (vd->recording) {
 		struct box *b = malloc (screen->nOutputDev * sizeof (struct box));
-		for (i = 0; i < screen->nOutputDev; i++)
-		{
+		for (i = 0; i < screen->nOutputDev; i++) {
 			b[i].x1 = outputs[i].region.extents.x1;
 			b[i].y1 = outputs[i].region.extents.y1;
 			b[i].x2 = outputs[i].region.extents.x2;
@@ -330,14 +324,13 @@ vidcapPaintScreen (CompScreen   *screen,
 
 		stride = screen->width;
 
-		for (i = 0; i < screen->nOutputDev; i++)
-		{
+		for (i = 0; i < screen->nOutputDev; i++) {
 			width = outputs[i].width;
 			height = outputs[i].height;
 
 			size = width * height * 4;
 
-			pixel_data = malloc (size);
+			pixel_data = malloc(size);
 			if (!pixel_data)
 				return;
 
@@ -373,23 +366,22 @@ vidcapPaintScreen (CompScreen   *screen,
 
 			write(vd->fd, outbuf, (p - outbuf) * 4);
 
-			free (pixel_data);
+			free(pixel_data);
 		}
 	}
 
 	if (vidcapGetDrawIndicator (screen->display) &&
-		((vd->recording && vd->show_dot) || vd->thread_running || vd->done))
-	{
-		glViewport (0, 0, screen->width, screen->height);
+		((vd->recording && vd->show_dot) ||
+			vd->thread_running || vd->done)) {
+		glViewport(0, 0, screen->width, screen->height);
 
-		glPushMatrix ();
+		glPushMatrix();
 
-		glTranslatef (-0.5f, -0.5f, -DEFAULT_Z_CAMERA);
-		glScalef (1.0f  / screen->width, -1.0f / screen->height, 1.0f);
-		glTranslatef (0, -screen->height, 0.0f);
+		glTranslatef(-0.5f, -0.5f, -DEFAULT_Z_CAMERA);
+		glScalef(1.0f  / screen->width, -1.0f / screen->height, 1.0f);
+		glTranslatef(0, -screen->height, 0.0f);
 
-		for (i = 0; i < screen->nOutputDev; i++)
-		{
+		for (i = 0; i < screen->nOutputDev; i++) {
 			int angle;
 			double vectorX, vectorY;
 			int centerX = outputs[i].region.extents.x2 - 50;
@@ -401,20 +393,19 @@ vidcapPaintScreen (CompScreen   *screen,
 				glColor4f(0.0, 0.5, 0.8, 0.5);
 			else if (vd->done)
 				glColor4f(0.0, 1.0, 0.0,
-					cosf ((vd->dot_timer / (float) DONE_MS) * M_PI * 0.5));
+					cosf((vd->dot_timer / (float) DONE_MS) * M_PI * 0.5));
 
-			glEnable (GL_BLEND);
+			glEnable(GL_BLEND);
 
-			glBegin (GL_TRIANGLE_FAN);
-			glVertex2d (centerX, centerY);
-			if ((vd->recording && vd->show_dot) || vd->done)
-			{
+			glBegin(GL_TRIANGLE_FAN);
+			glVertex2d(centerX, centerY);
+			if ((vd->recording && vd->show_dot) || vd->done) {
 				for (angle = 0; angle <= 360; angle++)
 				{
 					vectorX = centerX +
-							 (25 * sinf (angle * DEG2RAD));
+							 (25 * sinf(angle * DEG2RAD));
 					vectorY = centerY +
-							 (25 * cosf (angle * DEG2RAD));
+							 (25 * cosf(angle * DEG2RAD));
 					glVertex2d (vectorX, vectorY);
 				}
 			}
@@ -423,34 +414,29 @@ vidcapPaintScreen (CompScreen   *screen,
 				int target_angle = vd->dot_timer / (SPIN_MS / 360.0f);
 				if (!target_angle)
 					target_angle++;
-				if (vd->show_dot)
-				{
-					for (angle = target_angle; angle >= 0; angle--)
-					{
+				if (vd->show_dot) {
+					for (angle = target_angle; angle >= 0; angle--) {
 						vectorX = centerX +
-								 (25 * sinf (angle * DEG2RAD));
+								 (25 * sinf(angle * DEG2RAD));
 						vectorY = centerY -
-								 (25 * cosf (angle * DEG2RAD));
+								 (25 * cosf(angle * DEG2RAD));
 						glVertex2d (vectorX, vectorY);
 					}
-				}
-				else
-				{
-					for (angle = 360; angle >= target_angle; angle--)
-					{
+				} else {
+					for (angle = 360; angle >= target_angle; angle--) {
 						vectorX = centerX +
-								 (25 * sinf (angle * DEG2RAD));
+								 (25 * sinf(angle * DEG2RAD));
 						vectorY = centerY -
-								 (25 * cosf (angle * DEG2RAD));
+								 (25 * cosf(angle * DEG2RAD));
 						glVertex2d (vectorX, vectorY);
 					}
 				}
 			}
 			glEnd();
 
-			glDisable (GL_BLEND);
+			glDisable(GL_BLEND);
 
-			glColor4usv (defaultColor);
+			glColor4usv(defaultColor);
 		}
 
 		glPopMatrix ();
@@ -546,7 +532,7 @@ output_yuv_frame(struct wcap_decoder *decoder, FILE *f)
 }
 
 static void
-write_file (int fd)
+write_file(int fd)
 {
 	struct wcap_decoder *decoder = wcap_decoder_create(WCAPFILE);
 	int i, has_frame;
@@ -556,7 +542,7 @@ write_file (int fd)
 	char *header;
 	int size;
 
-	compLogMessage ("vidcap", CompLogLevelInfo, "Decoding");
+	compLogMessage("vidcap", CompLogLevelInfo, "Decoding");
 
 	size = asprintf (&header, "YUV4MPEG2 C420jpeg W%d H%d F%d:%d Ip A0:0\n",
 							decoder->width, decoder->height, num, denom);
@@ -584,7 +570,7 @@ write_file (int fd)
 
 	fclose(f);
 
-	compLogMessage ("vidcap", CompLogLevelInfo,
+	compLogMessage("vidcap", CompLogLevelInfo,
 		"wcap file: size %dx%d, %d frames\n",
 		decoder->width, decoder->height, i);
 
@@ -592,7 +578,7 @@ write_file (int fd)
 }
 
 static void *
-thread_func (void *data)
+thread_func(void *data)
 {
 	CompDisplay *d = (CompDisplay *) data;
 	int fd;
@@ -605,18 +591,15 @@ thread_func (void *data)
 
 	fd = open(RAWFILE, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
 
-	write_file (fd);
+	write_file(fd);
 
-	close (fd);
+	close(fd);
 
-	if (stat (vidcapGetDirectory (d), &st) == 0 && S_ISDIR(st.st_mode) &&
-			access(vidcapGetDirectory (d), W_OK) == 0)
-	{
+	if (stat(vidcapGetDirectory (d), &st) == 0 && S_ISDIR(st.st_mode) &&
+			access(vidcapGetDirectory (d), W_OK) == 0) {
 		directory = strdup (vidcapGetDirectory (d));
-	}
-	else
-	{
-		compLogMessage ("vidcap", CompLogLevelWarn,
+	} else {
+		compLogMessage("vidcap", CompLogLevelWarn,
 			"Could not stat '%s' or not a writable directory, "
 										"defaulting to /tmp\n",
 			vidcapGetDirectory (d));
@@ -626,28 +609,25 @@ thread_func (void *data)
 	tmpcmd = strdup (vidcapGetCommand (d));
 	found = 0;
 
-	for (i = 0; i < strlen (tmpcmd); i++)
-	{
-		if (!strncmp(&tmpcmd[i], "%f.", 3))
-		{
+	for (i = 0; i < strlen(tmpcmd); i++) {
+		if (!strncmp(&tmpcmd[i], "%f.", 3)) {
 			found = 1;
 			for (j = i + 3; strncmp(&tmpcmd[j], " ", 1) &&
 							strncmp(&tmpcmd[j], "\0", 1); j++);
 			j = j - (i + 3);
-			strncpy (ext, &tmpcmd[i + 3], j);
-			strncpy (&ext[j+1], "\0", 1);
+			strncpy(ext, &tmpcmd[i + 3], j);
+			strncpy(&ext[j+1], "\0", 1);
 			break;
 		}
 	}
-	free (tmpcmd);
+	free(tmpcmd);
 
 	if (!found)
 		strcpy (ext, "mp4");
 
 	i = 0;
 	sprintf(filename, "vidcap-%02d.%s", i, ext);
-	while ((dir = opendir(directory)) != NULL)
-	{
+	while ((dir = opendir(directory)) != NULL) {
 		found = 0;
 		while ((file = readdir(dir)) != 0)
 		{
@@ -657,13 +637,10 @@ thread_func (void *data)
 				break;
 			}
 		}
-		if (found)
-		{
+		if (found) {
 			i++;
 			sprintf(filename, "vidcap-%02d.%s", i, ext);
-		}
-		else
-		{
+		} else {
 			closedir (dir);
 			break;
 		}
@@ -672,13 +649,11 @@ thread_func (void *data)
 	if (asprintf (&fullpath, "%s/%s", directory, filename) <= 0)
 		fullpath = strdup ("/tmp/vidcap.mp4");
 
-	tmpcmd = strdup (vidcapGetCommand (d));
+	tmpcmd = strdup(vidcapGetCommand (d));
 	ret = found = 0;
 
-	for (i = 0; i < strlen (tmpcmd); i++)
-	{
-		if (!strncmp(&tmpcmd[i], "%f.", 3))
-		{
+	for (i = 0; i < strlen (tmpcmd); i++) {
+		if (!strncmp (&tmpcmd[i], "%f.", 3)) {
 			found = 1;
 			for (j = i + 3; strncmp(&tmpcmd[j], " ", 1) &&
 							strncmp(&tmpcmd[j], "\0", 1); j++);
@@ -691,15 +666,15 @@ thread_func (void *data)
 	}
 
 	if (!found)
-		ret = asprintf (&command, "cat %s | avconv -i - %s", RAWFILE, fullpath);
+		ret = asprintf(&command, "cat %s | avconv -i - %s", RAWFILE, fullpath);
 
 	if (ret > 0)
-		system (command);
+		system(command);
 
-	compLogMessage ("vidcap", CompLogLevelInfo, "Created: %s\n", fullpath);
+	compLogMessage("vidcap", CompLogLevelInfo, "Created: %s\n", fullpath);
 
-	remove (RAWFILE);
-	remove (WCAPFILE);
+	remove(RAWFILE);
+	remove(WCAPFILE);
 
 	free (tmpcmd);
 	free (command);
@@ -716,7 +691,7 @@ thread_func (void *data)
 }
 
 static Bool
-vidcapToggle (CompDisplay     *d,
+vidcapToggle(CompDisplay     *d,
 				CompAction      *action,
 				CompActionState state,
 				CompOption      *option,
@@ -728,7 +703,7 @@ vidcapToggle (CompDisplay     *d,
 	if (vd->thread_running)
 	{
 		vd->recording = FALSE;
-		compLogMessage ("vidcap", CompLogLevelInfo, "Processing, please wait");
+		compLogMessage("vidcap", CompLogLevelInfo, "Processing, please wait");
 		return TRUE;
 	}
 
@@ -736,7 +711,7 @@ vidcapToggle (CompDisplay     *d,
 
 	if (vd->recording)
 	{
-		compLogMessage ("vidcap", CompLogLevelInfo, "Recording started");
+		compLogMessage("vidcap", CompLogLevelInfo, "Recording started");
 		vd->frame = malloc (d->screens->width * d->screens->height * 4);
 		if (!vd->frame)
 		{
@@ -751,8 +726,7 @@ vidcapToggle (CompDisplay     *d,
 		header.width = d->screens->width;
 		header.height = d->screens->height;
 
-		vd->fd = open(WCAPFILE,
-					O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
+		vd->fd = open(WCAPFILE, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
 
 		write(vd->fd, &header, sizeof header);
 
@@ -766,14 +740,14 @@ vidcapToggle (CompDisplay     *d,
 		vd->dot_timer = 0;
 		vd->thread_running = TRUE;
 		pthread_create(&vd->thread, NULL, thread_func, d);
-		compLogMessage ("vidcap", CompLogLevelInfo, "Recording stopped");
+		compLogMessage("vidcap", CompLogLevelInfo, "Recording stopped");
 	}
 
 	return TRUE;
 }
 
 static Bool
-vidcapInitDisplay (CompPlugin *p,
+vidcapInitDisplay(CompPlugin *p,
 					CompDisplay *d)
 {
 	VidcapDisplay * vd;
@@ -781,14 +755,14 @@ vidcapInitDisplay (CompPlugin *p,
 	if (!checkPluginABI ("core", CORE_ABIVERSION))
 		return FALSE;
 
-	vd = malloc (sizeof (VidcapDisplay));
+	vd = malloc(sizeof (VidcapDisplay));
 	if (!vd)
 		return FALSE;
 
 	vd->screenPrivateIndex = allocateScreenPrivateIndex (d);
 	if (vd->screenPrivateIndex < 0)
 	{
-		free (vd);
+		free(vd);
 		return FALSE;
 	}
 
@@ -796,7 +770,7 @@ vidcapInitDisplay (CompPlugin *p,
 	vd->recording = FALSE;
 	vd->thread_running = FALSE;
 
-    vidcapSetToggleRecordInitiate (d, vidcapToggle);
+    vidcapSetToggleRecordInitiate(d, vidcapToggle);
 
     d->base.privates[VidcapDisplayPrivateIndex].ptr = vd;
 
@@ -805,25 +779,25 @@ vidcapInitDisplay (CompPlugin *p,
 }
 
 static void
-vidcapFiniDisplay (CompPlugin *p,
+vidcapFiniDisplay(CompPlugin *p,
 					CompDisplay *d)
 {
 	VIDCAP_DISPLAY (d);
 
-	freeScreenPrivateIndex (d, vd->screenPrivateIndex);
+	freeScreenPrivateIndex(d, vd->screenPrivateIndex);
 
 	free (vd);
 }
 
 static Bool
-vidcapInitScreen (CompPlugin *p,
+vidcapInitScreen(CompPlugin *p,
 				 CompScreen *s)
 {
 	VidcapScreen *vs;
 
     VIDCAP_DISPLAY (s->display);
 
-	vs = malloc (sizeof (VidcapScreen));
+	vs = malloc(sizeof (VidcapScreen));
 	if (!vs)
 		return FALSE;
 
@@ -838,7 +812,7 @@ vidcapInitScreen (CompPlugin *p,
 }
 
 static void
-vidcapFiniScreen (CompPlugin *p,
+vidcapFiniScreen(CompPlugin *p,
 					CompScreen *s)
 {
     VIDCAP_SCREEN (s);
@@ -852,7 +826,7 @@ vidcapFiniScreen (CompPlugin *p,
 
 
 static CompBool
-vidcapInitObject (CompPlugin *p,
+vidcapInitObject(CompPlugin *p,
 					CompObject *o)
 {
 	static InitPluginObjectProc dispTab[] = {
@@ -865,7 +839,7 @@ vidcapInitObject (CompPlugin *p,
 }
 
 static void
-vidcapFiniObject (CompPlugin *p,
+vidcapFiniObject(CompPlugin *p,
 					CompObject *o)
 {
 	static FiniPluginObjectProc dispTab[] = {
@@ -878,7 +852,7 @@ vidcapFiniObject (CompPlugin *p,
 }
 
 static Bool
-vidcapInit (CompPlugin *p)
+vidcapInit(CompPlugin *p)
 {
 	VidcapDisplayPrivateIndex = allocateDisplayPrivateIndex ();
 
@@ -889,7 +863,7 @@ vidcapInit (CompPlugin *p)
 }
 
 static void
-vidcapFini (CompPlugin *p)
+vidcapFini(CompPlugin *p)
 {
 	freeDisplayPrivateIndex (VidcapDisplayPrivateIndex);
 }
