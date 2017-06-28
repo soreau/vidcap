@@ -46,6 +46,10 @@
 #define WCAPFILE "/tmp/vidcap.wcap"
 #define RAWFILE "/tmp/vidcap.raw"
 
+#define DONE_MS 1500
+#define SPIN_MS 1000
+#define BLINK_MS 500
+
 static int VidcapDisplayPrivateIndex;
 
 typedef struct _VidcapDisplay
@@ -243,15 +247,15 @@ vidcapPreparePaintScreen (CompScreen *s, int ms)
 									vidcapGetDrawIndicator (s->display))
 	{
 		vd->dot_timer += ms;
-		if (!vd->done && vd->dot_timer > (vd->thread_running ? 1000 : 500))
+		if (!vd->done && vd->dot_timer > (vd->thread_running ? SPIN_MS : BLINK_MS))
 		{
 			if (vd->thread_running)
-				vd->dot_timer -= 1000;
+				vd->dot_timer -= SPIN_MS;
 			else
-				vd->dot_timer -= 500;
+				vd->dot_timer -= BLINK_MS;
 			vd->show_dot = !vd->show_dot;
 		}
-		if (vd->done && vd->dot_timer > 1500)
+		if (vd->done && vd->dot_timer > DONE_MS)
 			vd->done = FALSE;
 	}
 
@@ -416,7 +420,7 @@ vidcapPaintScreen (CompScreen   *screen,
 			}
 			else
 			{
-				int target_angle = vd->dot_timer / 2.78f;
+				int target_angle = vd->dot_timer / (SPIN_MS / 360.0f);
 				if (!target_angle)
 					target_angle++;
 				if (vd->show_dot)
