@@ -401,7 +401,7 @@ vidcapPaintScreen (CompScreen   *screen,
 				glColor4f(0.0, 0.5, 0.8, 0.5);
 			else if (vd->done)
 				glColor4f(0.0, 1.0, 0.0,
-						cosf ((vd->dot_timer / 2000.0f) * M_PI * 0.5));
+						cosf ((vd->dot_timer / (float) DONE_MS) * M_PI * 0.5));
 
 			glEnable (GL_BLEND);
 
