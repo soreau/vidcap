@@ -22,9 +22,6 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  * 
- * Portions of this code were copied from weston wcap-decode and
- * screenshooter.
- * 
  * Copyright © 2017 Scott Moreau
  */
 
@@ -246,9 +243,12 @@ vidcapPreparePaintScreen (CompScreen *s, int ms)
 									vidcapGetDrawIndicator (s->display))
 	{
 		vd->dot_timer += ms;
-		if (!vd->done && vd->dot_timer > 500)
+		if (!vd->done && vd->dot_timer > (vd->thread_running ? 1000 : 500))
 		{
-			vd->dot_timer -= 500;
+			if (vd->thread_running)
+				vd->dot_timer -= 1000;
+			else
+				vd->dot_timer -= 500;
 			vd->show_dot = !vd->show_dot;
 		}
 		if (vd->done && vd->dot_timer > 1500)
@@ -373,9 +373,8 @@ vidcapPaintScreen (CompScreen   *screen,
 		}
 	}
 
-	if (((vd->recording && vd->show_dot) ||
-			(vd->thread_running && vd->show_dot) || vd->done) &&
-						vidcapGetDrawIndicator (screen->display))
+	if (vidcapGetDrawIndicator (screen->display) &&
+		((vd->recording && vd->show_dot) || vd->thread_running || vd->done))
 	{
 		glViewport (0, 0, screen->width, screen->height);
 
@@ -404,16 +403,45 @@ vidcapPaintScreen (CompScreen   *screen,
 
 			glBegin (GL_TRIANGLE_FAN);
 			glVertex2d (centerX, centerY);
-			for (angle = 0; angle <= 360; angle++)
+			if ((vd->recording && vd->show_dot) || vd->done)
 			{
-				vectorX = centerX +
-						 (25 * sinf (angle * DEG2RAD));
-				vectorY = centerY +
-						 (25 * cosf (angle * DEG2RAD));
-				glVertex2d (vectorX, vectorY);
+				for (angle = 0; angle <= 360; angle++)
+				{
+					vectorX = centerX +
+							 (25 * sinf (angle * DEG2RAD));
+					vectorY = centerY +
+							 (25 * cosf (angle * DEG2RAD));
+					glVertex2d (vectorX, vectorY);
+				}
 			}
-			glVertex2d (centerX, centerY +
-						25);
+			else
+			{
+				int target_angle = vd->dot_timer / 2.78f;
+				if (!target_angle)
+					target_angle++;
+				if (vd->show_dot)
+				{
+					for (angle = target_angle; angle >= 0; angle--)
+					{
+						vectorX = centerX +
+								 (25 * sinf (angle * DEG2RAD));
+						vectorY = centerY -
+								 (25 * cosf (angle * DEG2RAD));
+						glVertex2d (vectorX, vectorY);
+					}
+				}
+				else
+				{
+					for (angle = 360; angle >= target_angle; angle--)
+					{
+						vectorX = centerX +
+								 (25 * sinf (angle * DEG2RAD));
+						vectorY = centerY -
+								 (25 * cosf (angle * DEG2RAD));
+						glVertex2d (vectorX, vectorY);
+					}
+				}
+			}
 			glEnd();
 
 			glDisable (GL_BLEND);
@@ -731,6 +759,7 @@ vidcapToggle (CompDisplay     *d,
 	{
 		free (vd->frame);
 		close (vd->fd);
+		vd->dot_timer = 0;
 		vd->thread_running = TRUE;
 		pthread_create(&vd->thread, NULL, thread_func, d);
 		compLogMessage ("vidcap", CompLogLevelInfo, "Recording stopped");
@@ -759,6 +788,7 @@ vidcapInitDisplay (CompPlugin *p,
 		return FALSE;
 	}
 
+	vd->done = FALSE;
 	vd->recording = FALSE;
 	vd->thread_running = FALSE;
 
